@@ -94,10 +94,19 @@ function installPathOf(home: string): string | null {
 }
 
 function lockEnabled(home: string): boolean | null {
-  const lock = join(home, ".omp", "plugins", "omp-plugins.lock.json");
-  if (!existsSync(lock)) return null;
-  const data = JSON.parse(readFileSync(lock, "utf8")) as { plugins: Record<string, { enabled: boolean }> };
-  return data.plugins?.["airspeak"]?.enabled ?? null;
+  // The omp/tau CLI writes plugin state to the tau tree ($HOME/.tau/plugins);
+  // the legacy omp tree ($HOME/.omp/plugins) is a fallback for old binaries.
+  const candidates = [
+    join(home, ".tau", "plugins", "tau-plugins.lock.json"),
+    join(home, ".omp", "plugins", "omp-plugins.lock.json"),
+  ];
+  for (const lock of candidates) {
+    if (!existsSync(lock)) continue;
+    const data = JSON.parse(readFileSync(lock, "utf8")) as { plugins: Record<string, { enabled: boolean }> };
+    const enabled = data.plugins?.["airspeak"]?.enabled ?? null;
+    if (enabled !== null) return enabled;
+  }
+  return null;
 }
 
 function installFrom(home: string, repo: string): void {
